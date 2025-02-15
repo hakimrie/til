@@ -1,1 +1,6 @@
 **.DS_Store
+
+# virtual env
+.venv
+
+.python-version

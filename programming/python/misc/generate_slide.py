@@ -48,28 +48,25 @@ def generate_gradient_background(width, height, colors):
         draw.line([(0, y), (width, y)], fill=color)
     return gradient
 
+def generate_code_slide_with_background(code, output_path="code_slide_bg_landscape.png"):
+    """Generates a landscape code slide with reduced vertical padding."""
+    # --- Background Settings (Landscape & Wider) ---
+    background_width = 1920 #* 1.5 # Wider background (1.5x HD width)
+    background_height = 1080
+    gradient_colors = [(255, 0, 255), (0, 0, 255)] # Magenta to Blue gradient
 
-def generate_code_slide_with_background(code, output_path="code_slide_bg.png"):
-    """
-    Generates a code slide with a colorful gradient background and anti-aliased terminal buttons.
-    """
-    # --- Background Settings ---
-    background_width = 1920  # Example HD width
-    background_height = 1080 # Example HD height
-    gradient_colors = [(255, 0, 255), (0, 0, 255)] # Magenta to Blue gradient - you can customize
     background_image = generate_gradient_background(background_width, background_height, gradient_colors)
 
-
-    # --- Terminal Settings (Same as before, adjust if needed) ---
+    # --- Terminal Settings (Adjusted Padding & Landscape Width) ---
     terminal_background_color = "#282A36"
     terminal_bar_color = "#44475A"
 
     font_family = "JetBrainsMono-Regular.ttf"
-    font_size = 60
+    font_size = 40
     line_height = int(font_size * 1.3)
 
-    padding_x = 100
-    padding_y = 50
+    padding_x = 100 # Horizontal padding remains same
+    padding_y = 40  # Reduced vertical padding - important change!
 
     terminal_bar_height = 80
     terminal_button_radius = 16
@@ -77,17 +74,16 @@ def generate_code_slide_with_background(code, output_path="code_slide_bg.png"):
     terminal_button_y_offset = 20
     button_antialias_factor = 4
 
-
-    # --- ImageFormatter Configuration (Same as before) ---
+    # --- ImageFormatter Configuration ---
     formatter = ImageFormatter(
         style='dracula',
         font_name=font_family,
         font_size=font_size,
-        background=terminal_background_color, # Terminal background color, not slide background
+        background=terminal_background_color,
         line_number_bg=terminal_background_color,
         line_number_fg="#F8F8F2",
         line_numbers=False,
-        image_pad=padding_x,
+        image_pad=padding_y,
         line_pad=line_height - font_size
     )
 
@@ -96,26 +92,23 @@ def generate_code_slide_with_background(code, output_path="code_slide_bg.png"):
     highlighted_code_image = Image.open(io.BytesIO(highlighted_code_bytes))
     code_width, code_height = highlighted_code_image.size
 
-    # --- Calculate Terminal Image Size ---
-    terminal_image_width = code_width + 2 * padding_x # Already included in ImageFormatter, but for clarity
-    terminal_image_height = terminal_bar_height + padding_y + code_height + padding_y # Adjusted to include bar
+    # --- Calculate Terminal Image Size (Landscape width) ---
+    terminal_image_width = max(code_width + 2 * padding_x, 1200) # Wider terminal, minimum width for landscape
+    terminal_image_height = terminal_bar_height + padding_y + code_height + padding_y
 
-
-    # --- Create Terminal Image (with transparent background) ---
-    terminal_image = Image.new('RGBA', (terminal_image_width, terminal_image_height), (0, 0, 0, 0)) # RGBA for transparency
+    # --- Create Terminal Image (RGBA for transparency) ---
+    terminal_image = Image.new('RGBA', (terminal_image_width, terminal_image_height), (0, 0, 0, 0))
     d_terminal = ImageDraw.Draw(terminal_image)
 
-
-    # --- Draw Terminal Background Rectangle (Solid color) ---
-    d_terminal.rectangle([(0, terminal_bar_height), (terminal_image_width, terminal_image_height)], fill=terminal_background_color) # Background starts below bar
-
+    # --- Draw Terminal Background Rectangle ---
+    d_terminal.rectangle([(0, terminal_bar_height), (terminal_image_width, terminal_image_height)], fill=terminal_background_color)
 
     # --- Create Terminal Bar Image for Buttons (Anti-aliased) ---
-    terminal_bar_image_buttons = Image.new('RGBA', (terminal_image_width * button_antialias_factor, terminal_bar_height * button_antialias_factor), (0,0,0,0)) # Transparent for bar
+    terminal_bar_image_buttons = Image.new('RGBA', (terminal_image_width * button_antialias_factor, terminal_bar_height * button_antialias_factor), (0,0,0,0))
     d_bar_buttons = ImageDraw.Draw(terminal_bar_image_buttons)
-    d_bar_buttons.rectangle([(0, 0), (terminal_image_width * button_antialias_factor, terminal_bar_height * button_antialias_factor)], fill=terminal_bar_color) # Solid bar color
+    d_bar_buttons.rectangle([(0, 0), (terminal_image_width * button_antialias_factor, terminal_bar_height * button_antialias_factor)], fill=terminal_bar_color)
 
-    button_x_large = padding_x * button_antialias_factor // 2 # Scaled button positions
+    button_x_large = padding_x * button_antialias_factor // 2
     button_radius_large = terminal_button_radius * button_antialias_factor
     button_spacing_large = terminal_button_spacing * button_antialias_factor
     terminal_button_y_offset_large = terminal_button_y_offset * button_antialias_factor
@@ -128,35 +121,34 @@ def generate_code_slide_with_background(code, output_path="code_slide_bg.png"):
         button_x_large += 2 * button_radius_large + button_spacing_large
 
     terminal_bar_image_buttons_resized = terminal_bar_image_buttons.resize((terminal_image_width, terminal_bar_height), Image.LANCZOS)
-    terminal_image.paste(terminal_bar_image_buttons_resized, (0, 0), mask=terminal_bar_image_buttons_resized) # Paste bar, using itself as mask for transparency
-
+    terminal_image.paste(terminal_bar_image_buttons_resized, (0, 0), mask=terminal_bar_image_buttons_resized)
 
     # --- Paste Highlighted Code Image onto Terminal Image ---
     code_y_position = terminal_bar_height + padding_y
-    terminal_image.paste(highlighted_code_image, (padding_x, code_y_position)) # Paste code, respecting ImageFormatter padding
-
+    terminal_image.paste(highlighted_code_image, (padding_x, code_y_position))
 
     # --- Calculate Position to Center Terminal on Background ---
     terminal_x_position = (background_width - terminal_image_width) // 2
     terminal_y_position = (background_height - terminal_image_height) // 2
 
-
     # --- Composite Terminal Image onto Background ---
-    background_image.paste(terminal_image, (terminal_x_position, terminal_y_position), mask=terminal_image) # Use terminal image as mask for transparency
-
+    background_image.paste(terminal_image, (terminal_x_position, terminal_y_position), mask=terminal_image)
 
     # --- Save Final Image ---
     background_image.save(output_path)
-    print(f"Code slide with background saved to {output_path}")
-
+    print(f"Landscape code slide with background saved to {output_path}")
 
 
 # --- Example Usage ---
-code_example = """@dataclass
-class Item:
-
-    name: str
-    price: float
+code_example = """
+agent = CodeAgent(
+    tools=[go_back, close_popups, search_item_ctrl_f],
+    model=model,
+    additional_authorized_imports=["helium"],
+    step_callbacks=[save_screenshot],
+    max_steps=20,
+    verbosity_level=2,
+)
 """
 
-generate_code_slide_with_background(code_example)
+generate_code_slide_with_background(code_example, output_path="code_slide_bg_landscape_2.png")

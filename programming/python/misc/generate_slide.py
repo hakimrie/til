@@ -6,25 +6,28 @@ import io
 
 def generate_code_slide(code, output_path="code_slide.png"):
     """
-    Generates a higher resolution image slide with Python code and improved terminal buttons.
+    Generates a higher resolution image slide with anti-aliased terminal buttons.
     """
-    # --- Settings (Increased Resolution) ---
+    # --- Settings (Increased Base Resolution) ---
     background_color = "#282A36"
     terminal_bar_color = "#44475A"
 
     font_family = "JetBrainsMono-Regular.ttf"
-    font_size = 60  # Doubled font size for higher resolution
-    line_height = int(font_size * 1.3) # Adjusted line height
+    font_size = 60
+    line_height = int(font_size * 1.3)
 
-    padding_x = 100 # Increased padding
-    padding_y = 100 # Increased padding
+    padding_x = 100
+    padding_y = 100
 
-    terminal_bar_height = 80 # Increased terminal bar height
-    terminal_button_radius = 16 # Doubled button radius
-    terminal_button_spacing = 20 # Increased spacing
-    terminal_button_y_offset = 20 # Adjusted offset
+    terminal_bar_height = 80
+    terminal_button_radius = 16
+    terminal_button_spacing = 20
+    terminal_button_y_offset = 20
 
-    # --- ImageFormatter Configuration (Keep Style, Adjust Padding) ---
+    # --- Anti-aliasing Factor for Buttons ---
+    button_antialias_factor = 4  # Draw buttons 4x larger, then downsample
+
+    # --- ImageFormatter Configuration ---
     formatter = ImageFormatter(
         style='dracula',
         font_name=font_family,
@@ -33,8 +36,8 @@ def generate_code_slide(code, output_path="code_slide.png"):
         line_number_bg="#282A36",
         line_number_fg="#F8F8F2",
         line_numbers=False,
-        image_pad=padding_x, # Use the increased padding
-        line_pad=line_height - font_size # Adjust line padding based on new line_height
+        image_pad=padding_x,
+        line_pad=line_height - font_size
     )
 
     lexer = PythonLexer()
@@ -46,19 +49,33 @@ def generate_code_slide(code, output_path="code_slide.png"):
     image_width = code_width
     image_height = terminal_bar_height + padding_y + code_height + padding_y
 
-    # --- Create Image ---
+    # --- Create Main Image ---
     img = Image.new('RGB', (image_width, image_height), background_color)
     d = ImageDraw.Draw(img)
 
-    # --- Draw Terminal Bar (Higher Resolution Buttons) ---
-    d.rectangle([(0, 0), (image_width, terminal_bar_height)], fill=terminal_bar_color)
-    button_x = padding_x // 2 # Adjust button x position for increased padding
+    # --- Create Terminal Bar Image (Separate for Button Anti-aliasing) ---
+    terminal_bar_image = Image.new('RGB', (image_width * button_antialias_factor, terminal_bar_height * button_antialias_factor), terminal_bar_color) # Draw 4x larger
+    d_bar = ImageDraw.Draw(terminal_bar_image)
+
+    # --- Draw Terminal Bar Buttons (on the larger bar image) ---
+    button_x_large = padding_x // 2 * button_antialias_factor # Scaled button position
+    button_radius_large = terminal_button_radius * button_antialias_factor # Scaled radius
+    button_spacing_large = terminal_button_spacing * button_antialias_factor # Scaled spacing
+    terminal_button_y_offset_large = terminal_button_y_offset * button_antialias_factor # Scaled offset
+
     button_colors = ["#FF5F56", "#FFBD2E", "#27C93F"]
     for color in button_colors:
-        d.ellipse([(button_x - terminal_button_radius, terminal_button_y_offset),
-                   (button_x + terminal_button_radius, terminal_button_y_offset + 2*terminal_button_radius)],
-                  fill=color)
-        button_x += 2 * terminal_button_radius + terminal_button_spacing
+        d_bar.ellipse([(button_x_large - button_radius_large, terminal_button_y_offset_large),
+                       (button_x_large + button_radius_large, terminal_button_y_offset_large + 2*button_radius_large)],
+                      fill=color)
+        button_x_large += 2 * button_radius_large + button_spacing_large
+
+    # --- Resize Terminal Bar Image (Downsample for Anti-aliasing) ---
+    terminal_bar_image = terminal_bar_image.resize((image_width, terminal_bar_height), Image.LANCZOS) # Use LANCZOS filter
+
+    # --- Paste Terminal Bar Image onto Main Image ---
+    img.paste(terminal_bar_image, (0, 0))
+
 
     # --- Paste Highlighted Code Image ---
     code_y_position = terminal_bar_height + padding_y
@@ -66,7 +83,7 @@ def generate_code_slide(code, output_path="code_slide.png"):
 
     # --- Save Image ---
     img.save(output_path)
-    print(f"High-resolution code slide saved to {output_path}")
+    print(f"High-resolution code slide with anti-aliased buttons saved to {output_path}")
 
 
 # --- Example Usage ---
@@ -78,4 +95,4 @@ class User(BaseModel):
     account_id: int
 """
 
-generate_code_slide(code_example, output_path="code_slide_high_res.png")
+generate_code_slide(code_example, output_path="code_slide_hires.png")

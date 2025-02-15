@@ -158,7 +158,7 @@ def generate_terminal_image(code):
     return terminal_image
 
 
-def generate_code_slide(code, output_path="code_slide.png", with_background=True):
+def generate_code_slide(code, output_path="code_slide.png", with_background=False):
     """
     Generates a code slide, either with or without a background.
 
@@ -198,7 +198,7 @@ class Item:
 """
 
 # Generate with background (default)
-generate_code_slide(code_example, output_path="code_slide_with_bg.png")
+generate_code_slide(code_example, output_path="code_slide_with_bg.png", with_background=True)
 
 # Generate without background (terminal only)
 generate_code_slide(code_example, output_path="code_slide_terminal_only.png", with_background=False)
